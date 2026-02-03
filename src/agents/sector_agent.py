@@ -1,22 +1,20 @@
 from stable_baselines3 import PPO
-from src.envs.long_term_env import LongTermInvestEnv
 
 
 class SectorAgent:
-    def __init__(self, sector_name, df):
+    def __init__(self, sector_name):
         self.sector = sector_name
-        self.env = LongTermInvestEnv(df)
+        self.model = None
 
+    def train(self, env, timesteps=50_000):
         self.model = PPO(
             "MlpPolicy",
-            self.env,
+            env,
             verbose=0,
             n_steps=2048,
             batch_size=64,
             gamma=0.99
         )
-
-    def train(self, timesteps=50_000):
         self.model.learn(total_timesteps=timesteps)
 
     def predict(self, obs):
@@ -26,5 +24,5 @@ class SectorAgent:
     def save(self, path):
         self.model.save(path)
 
-    def load(self, path):
-        self.model = PPO.load(path, env=self.env)
+    def load(self, path, env):
+        self.model = PPO.load(path, env=env)
