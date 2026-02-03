@@ -1,9 +1,11 @@
+import os
+
 from src.data.fetch import build_features
 from src.data.feeds.long_term_feed import build_stock_signal
+from src.envs.long_term_env import LongTermInvestEnv
 from src.agents.sector_agent import SectorAgent
 from src.agents.chief_agent import ChiefAgent
 from src.configs.sectors import SECTORS
-import os
 
 
 MODELS_DIR = "models"
@@ -27,23 +29,26 @@ def run_long_term_pipeline():
             # 1. Build features
             df = build_features(symbol)
 
-            # 2. Init sector agent
-            agent = SectorAgent(sector, df)
+            # 2. Create environment
+            env = LongTermInvestEnv(df)
+
+            # 3. Create sector agent (MODEL ONLY)
+            agent = SectorAgent(sector)
 
             model_path = f"{MODELS_DIR}/{sector}_{symbol}"
 
-            # 3. Train or load model
+            # 4. Train or load model
             if os.path.exists(model_path + ".zip"):
-                agent.load(model_path)
+                agent.load(model_path, env)
             else:
-                agent.train(timesteps=30_000)
+                agent.train(env, timesteps=30_000)
                 agent.save(model_path)
 
-            # 4. Get latest observation
-            obs, _ = agent.env.reset()
+            # 5. Get latest observation
+            obs, _ = env.reset()
             action = agent.predict(obs)
 
-            # 5. Build signal for Chief Agent
+            # 6. Build signal for Chief Agent
             signal = build_stock_signal(
                 df=df,
                 symbol=symbol,
@@ -52,7 +57,7 @@ def run_long_term_pipeline():
 
             all_sector_outputs.append(signal)
 
-    # 6. Chief Agent decision
+    # 7. Chief Agent selects portfolio
     chief = ChiefAgent(max_stocks=5)
     final_portfolio = chief.select_portfolio(all_sector_outputs)
 
