@@ -1,5 +1,7 @@
 import pandas as pd
 from src.envs.long_term_env import LongTermInvestEnv
+from src.envs.long_term_env import LongTermEnv
+
 
 def test_env_step():
     df = pd.DataFrame({
