@@ -1,4 +1,6 @@
 from stable_baselines3 import PPO
+from src.config.sectors import SECTORS
+from src.data.signals import generate_signals
 
 
 class SectorAgent:
