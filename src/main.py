@@ -67,5 +67,11 @@ def main():
     print("🏁 Trading AI System Finished")
 
 
+if MODE == "PAPER":
+    executor = PaperExecutor()
+else:
+    executor = OpenAlgoExecutor()
+
+
 if __name__ == "__main__":
     main()
