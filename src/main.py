@@ -1,76 +1,87 @@
-from src.data.feed import load_market_data
-from src.data.features import build_features
+from config.settings import MODE
 
+# ===== Data =====
+from src.data.fetch import load_market_data
+from src.data.indicators import add_indicators
+from src.data.signals import add_signals
+
+# ===== Agents =====
 from src.agents.sector_agent import SectorAgent
 from src.agents.chief_agent import ChiefAgent
 from src.agents.intraday_regime_agent import IntradayRegimeAgent
 
-from src.envs.long_term_env import LongTermEnv
-from src.execution.intraday_executor import execute_intraday_trade
-from src.execution.openalgo_client import OpenAlgoClient
+# ===== Risk & Execution =====
+from src.risk.risk_manager import RiskManager
+from src.execution.paper_executor import PaperExecutor
+from src.execution.openalgo_executor import OpenAlgoExecutor
+
+# ===== Intraday =====
+from src.intraday.controller import execute_intraday_strategy
 
 
+# --------------------------------------------------
+# LONG-TERM PIPELINE
+# --------------------------------------------------
 def run_long_term_pipeline():
     print("📊 Running Long-Term Investment Pipeline")
 
-    # Load & prepare data
     df = load_market_data(mode="long_term")
-    df = build_features(df)
+    df = add_indicators(df)
+    df = add_signals(df)
 
-    # Sector analysis
     sector_agent = SectorAgent()
     sector_reports = sector_agent.analyze(df)
 
-    # Chief agent decides final stocks
     chief_agent = ChiefAgent()
-    final_stocks = chief_agent.select_long_term_stocks(sector_reports)
+    long_term_trades = chief_agent.select_long_term_stocks(sector_reports)
 
-    print("✅ Long-term selected stocks:", final_stocks)
-    return final_stocks
+    print("✅ Long-term decisions:", long_term_trades)
+    return long_term_trades, chief_agent
 
 
-def run_intraday_pipeline():
+# --------------------------------------------------
+# INTRADAY PIPELINE
+# --------------------------------------------------
+def run_intraday_pipeline(executor, risk_manager):
     print("⚡ Running Intraday Trading Pipeline")
 
-    # Load & prepare intraday data
     df = load_market_data(mode="intraday")
-    df = build_features(df)
+    df = add_indicators(df)
 
-    # Regime detection
     regime_agent = IntradayRegimeAgent()
     regime = regime_agent.classify(df)
 
     print(f"📈 Market Regime: {regime}")
 
-    if regime == "TREND":
-        strategy = "trend_following"
-    elif regime == "RANGE":
-        strategy = "mean_reversion"
-    else:
+    if regime == "NO_TRADE":
         print("🛑 No-trade regime detected")
         return
 
-    # Execute trade via OpenAlgo
-    broker = OpenAlgoClient()
-    execute_intraday_trade(df, strategy, broker)
+    trades = execute_intraday_strategy(df, regime)
+
+    for trade in trades:
+        if risk_manager.approve_trade(trade):
+            executor.execute(trade)
+        else:
+            print("🚨 Trade blocked by RiskManager")
 
 
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
 def main():
     print("🚀 Trading AI System Started")
 
-    # Long-term investment decision
-    run_long_term_pipeline()
+    executor = PaperExecutor() if MODE == "PAPER" else OpenAlgoExecutor()
+    risk_manager = RiskManager()
 
-    # Intraday trading execution
-    run_intraday_pipeline()
+    # Long-term
+    _, chief_agent = run_long_term_pipeline()
+
+    # Intraday
+    run_intraday_pipeline(executor, risk_manager)
 
     print("🏁 Trading AI System Finished")
-
-
-if MODE == "PAPER":
-    executor = PaperExecutor()
-else:
-    executor = OpenAlgoExecutor()
 
 
 if __name__ == "__main__":
