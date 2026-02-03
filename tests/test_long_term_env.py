@@ -10,9 +10,9 @@ def test_env_step():
     })
 
     env = LongTermInvestEnv(df)
-    obs = env.reset()
+    obs, info = env.reset()
+    obs, reward, terminated, truncated, _ = env.step([0.5])
 
-    obs, reward, done, _ = env.step([0.5])
-
+    
     assert len(obs) == 4
     assert isinstance(reward, float)
