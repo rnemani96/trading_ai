@@ -1,0 +1,5 @@
+SECTORS = {
+    "IT": ["TCS.NS", "INFY.NS", "WIPRO.NS"],
+    "BANKING": ["HDFCBANK.NS", "ICICIBANK.NS"],
+    "ENERGY": ["RELIANCE.NS", "ONGC.NS"],
+}
