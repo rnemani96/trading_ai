@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from src.data.fetch import fetch_ohlcv
+
 
 
 def build_stock_signal(df, symbol, allocation):
