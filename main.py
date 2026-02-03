@@ -1,13 +1,18 @@
-from pathlib import Path
-from src.replay.market_replay import MarketReplay
+from src.data.fetch import build_features
+from src.agents.sector_agent import SectorAgent
+from src.configs.sectors import SECTORS
 
-FEATURE_FILE = Path("D:/trading_ai/tmp/RELIANCE.NS_features.parquet")
 
-engine = MarketReplay(FEATURE_FILE)
+def run_sector_agents():
+    for sector, symbols in SECTORS.items():
+        print(f"Training sector: {sector}")
 
-while True:
-    candle = engine.step()
-    if candle is None:
-        break
+        for symbol in symbols:
+            df = build_features(symbol)
+            agent = SectorAgent(sector, df)
+            agent.train()
+            agent.save(f"models/{sector}_{symbol}")
 
-print(f"Final PnL: {engine.pnl:.2f}")
+
+if __name__ == "__main__":
+    run_sector_agents()
