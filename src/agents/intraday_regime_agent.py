@@ -1,4 +1,5 @@
 import numpy as np
+from src.data.indicators import calculate_atr, calculate_adx
 
 
 class IntradayRegimeAgent:
