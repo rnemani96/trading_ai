@@ -3,6 +3,8 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 from pathlib import Path
 from src.replay.r1_env import TradingEnv
+from src.envs.long_term_env import LongTermEnv
+
 
 # Path to your features
 FEATURE_FILE = Path("D:/trading_ai/tmp/RELIANCE.NS_features.parquet")
