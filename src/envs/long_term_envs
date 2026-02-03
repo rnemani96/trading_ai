@@ -6,49 +6,94 @@ import numpy as np
 class LongTermInvestEnv(gym.Env):
     """
     Long-term investment environment
-    Action: allocation weight (0–1)
-    Observation: technical + fundamentals (simplified)
+    Action: portfolio allocation (0 → cash, 1 → fully invested)
+    Observation: [price, rsi, ema20, ema50]
     """
 
-    def __init__(self, data):
+    metadata = {"render_modes": []}
+
+    def __init__(self, df, initial_cash=1_000_000):
         super().__init__()
-        self.data = data.reset_index(drop=True)
+
+        self.df = df.reset_index(drop=True)
+        self.initial_cash = initial_cash
+
+        # Environment state
         self.step_idx = 0
+        self.cash = initial_cash
+        self.shares = 0
 
-        # action: % capital to invest
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
-
-        # observation: [price, rsi, ema20, ema50]
+        # Observation: Close, RSI, EMA20, EMA50
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32
+            low=-np.inf,
+            high=np.inf,
+            shape=(4,),
+            dtype=np.float32
         )
 
-        self.cash = 1.0
-        self.position = 0.0
+        # Action: allocation percentage (0–1)
+        self.action_space = spaces.Box(
+            low=0.0,
+            high=1.0,
+            shape=(1,),
+            dtype=np.float32
+        )
 
-    def reset(self):
+    def _get_obs(self):
+        row = self.df.iloc[self.step_idx]
+        return np.array(
+            [
+                row["Close"],
+                row["rsi"],
+                row["ema20"],
+                row["ema50"],
+            ],
+            dtype=np.float32,
+        )
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+
         self.step_idx = 0
-        self.cash = 1.0
-        self.position = 0.0
-        return self._get_obs()
+        self.cash = self.initial_cash
+        self.shares = 0
+
+        obs = self._get_obs()
+        info = {}
+
+        return obs, info
 
     def step(self, action):
         allocation = float(action[0])
+        price = self.df.iloc[self.step_idx]["Close"]
 
-        price = self.data.loc[self.step_idx, "Close"]
-        next_price = self.data.loc[self.step_idx + 1, "Close"]
+        portfolio_value_before = self.cash + self.shares * price
 
-        self.position = allocation
-        reward = self.position * ((next_price - price) / price)
+        # Desired position
+        target_value = allocation * portfolio_value_before
+        target_shares = target_value / price
 
+        # Execute rebalance
+        delta_shares = target_shares - self.shares
+        self.cash -= delta_shares * price
+        self.shares = target_shares
+
+        # Move forward
         self.step_idx += 1
-        done = self.step_idx >= len(self.data) - 2
+        terminated = self.step_idx >= len(self.df) - 1
+        truncated = False
 
-        return self._get_obs(), reward, done, {}
+        next_price = self.df.iloc[self.step_idx]["Close"]
+        portfolio_value_after = self.cash + self.shares * next_price
 
-    def _get_obs(self):
-        row = self.data.loc[self.step_idx]
-        return np.array(
-            [row.Close, row.rsi, row.ema20, row.ema50],
-            dtype=np.float32
-        )
+        # Reward = portfolio growth
+        reward = float(portfolio_value_after - portfolio_value_before)
+
+        obs = self._get_obs()
+        info = {
+            "portfolio_value": portfolio_value_after,
+            "cash": self.cash,
+            "shares": self.shares,
+        }
+
+        return obs, reward, terminated, truncated, info
