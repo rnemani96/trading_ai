@@ -1,6 +1,9 @@
 from src.agents.intraday_regime_agent import IntradayRegimeAgent
 from src.intraday.trading_agent import IntradayTradingAgent
 from src.intraday.strategies import trend_strategy, mean_reversion_strategy
+from src.intraday.strategies.trend import TrendStrategy
+from src.execution.openalgo_executor import OpenAlgoExecutor
+
 
 
 class IntradayController:
